@@ -41,6 +41,24 @@ class Network(object):
             a = sigmoid(np.dot(w, a)+b)
         return a
 
+    
+    ### @ C.M.Y
+    ### layerIndex: the layer where neurons fail; 
+    ### ratio: the portion of neurons that fail; 
+    ### nodeOrNet: Is it a net failure (0) or a node failure (1)
+    def feedforwardWithFailure(self, a, layerIndex, ratio, nodeOrNet):   
+        mask_net = [np.ones((y,1)) for y in self.sizes[1:]]
+        mask_node = [np.zeros((y,1)) for y in self.sizes[1:]]
+        length = self.sizes[layerIndex-1] # The number of neurons in layer layerIndex  
+        for i in range(int(length*ratio)):
+                mask_net[layerIndex-2].itemset((i,0),0)
+        if nodeOrNet == 1:   ### node failure
+            for i in range(int(length*ratio)):
+                mask_node[layerIndex-2].itemset((i,0), -self.biases[layerIndex-2].item(i,0))
+        for b, w, mnet, mnode in zip(self.biases, self.weights, mask_net, mask_node):
+            a = sigmoid(np.dot(w, a) * mnet + b + mnode)
+        return a
+
     def SGD(self, training_data, epochs, mini_batch_size, eta,
             test_data=None):
         """Train the neural network using mini-batch stochastic
@@ -122,8 +140,14 @@ class Network(object):
         network outputs the correct result. Note that the neural
         network's output is assumed to be the index of whichever
         neuron in the final layer has the highest activation."""
-        test_results = [(np.argmax(self.feedforward(x)), y)
-                        for (x, y) in test_data]
+        
+        ### Original code
+        # test_results = [(np.argmax(self.feedforward(x)), y)
+        #                 for (x, y) in test_data]
+        
+        ### @ C.M.Y
+        test_results = [(np.argmax(self.feedforwardWithFailure(x, 2, 0.4, 1)), y)
+                        for (x, y) in test_data]                       
         return sum(int(x == y) for (x, y) in test_results)
 
     def cost_derivative(self, output_activations, y):
